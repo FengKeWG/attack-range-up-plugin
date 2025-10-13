@@ -2,6 +2,13 @@
 # 设置为 NULL 则没有默认粒子
 DefaultParticle: WITCH_MAGIC
 
+# 红石粒子颜色设置（仅对 REDSTONE 生效）
+Redstone:
+  # 颜色：支持 #RRGGBB 或 "R,G,B"（0-255）格式
+  Color: '#FF0000'
+  # 大小：建议 0.1 - 4.0
+  Size: 1.0
+
 # 以下注释为插件使用者提供指令参考
 # 粒子代号                  名字翻译
 #

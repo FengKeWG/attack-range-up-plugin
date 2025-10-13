@@ -7,11 +7,11 @@ import java.util.List;
 import java.util.regex.Pattern;
 
 import org.bukkit.Particle;
+import org.bukkit.Color;
 import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandSender;
-import org.bukkit.command.TabCompleter;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.LivingEntity;
 import org.bukkit.entity.Player;
@@ -20,25 +20,28 @@ import org.bukkit.event.Listener;
 import org.bukkit.event.block.Action;
 import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.inventory.meta.ItemMeta;
-import org.bukkit.plugin.Plugin;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.scheduler.BukkitRunnable;
 
-public class AttackRangeUp extends JavaPlugin implements Listener, TabCompleter {
+public class AttackRangeUp extends JavaPlugin implements Listener {
     private HashMap<String, String> particleName = new HashMap<>();
     private List<Player> cdlist = new ArrayList<>();
+    private Particle.DustOptions redstoneDustOptions;
 
     @Override
     public void onEnable() {
         this.getServer().getPluginManager().registerEvents(this, this);
-        File config;
+        File configFile;
         if (!this.getDataFolder().exists()) {
             this.getDataFolder().mkdir();
         }
-        if (!(config = new File(this.getDataFolder(), "config.yml")).exists()) {
+        configFile = new File(this.getDataFolder(), "config.yml");
+        if (!configFile.exists()) {
             this.saveDefaultConfig();
         }
         this.reloadConfig();
+        // 加载红石粒子颜色与大小
+        loadRedstoneDustOptions();
         // 初始化粒子名称映射
         particleName.put("AMBIENT_ENTITY_EFFECT", "§a环境实体效果");
         particleName.put("ANGRY_VILLAGER", "§c愤怒的村民");
@@ -190,7 +193,6 @@ public class AttackRangeUp extends JavaPlugin implements Listener, TabCompleter 
     }
 
     public void SweepAttack(Player p, Double range, Double damage) {
-        Location ploc = p.getLocation();
         for (Entity e : p.getNearbyEntities(range, range, range)) {
             if (!(e instanceof LivingEntity) || !this.inSight(p, e)) continue;
             LivingEntity le = (LivingEntity) e;
@@ -331,11 +333,61 @@ public class AttackRangeUp extends JavaPlugin implements Listener, TabCompleter 
                         Math.sin(radians) * Math.cos(Math.toRadians(loc.getYaw() - 90.0)));
 
                 Location particleLoc = loc.clone().add(x, y, z);
-                loc.getWorld().spawnParticle(type, particleLoc, 0, 0, 0, 0, 1);
+                if (type == Particle.REDSTONE && redstoneDustOptions != null) {
+                    // 使用自定义颜色与大小
+                    loc.getWorld().spawnParticle(type, particleLoc, 1, 0, 0, 0, 0, redstoneDustOptions);
+                } else {
+                    loc.getWorld().spawnParticle(type, particleLoc, 0, 0, 0, 0, 1);
+                }
                 o += 1.0;
             }
             i += 2.0;
         }
+    }
+
+    private void loadRedstoneDustOptions() {
+        String colorString = this.getConfig().getString("Redstone.Color", "#FF0000");
+        double sizeDouble = this.getConfig().getDouble("Redstone.Size", 1.0D);
+        float size = (float) Math.max(0.01D, Math.min(sizeDouble, 4.0D));
+        Color color = parseColor(colorString);
+        if (color == null) {
+            color = Color.fromRGB(255, 0, 0);
+        }
+        this.redstoneDustOptions = new Particle.DustOptions(color, size);
+    }
+
+    private Color parseColor(String text) {
+        if (text == null || text.isEmpty()) return null;
+        try {
+            String s = text.trim();
+            if (s.startsWith("#")) {
+                String hex = s.substring(1);
+                if (hex.length() == 6) {
+                    int rgb = Integer.parseInt(hex, 16);
+                    int r = (rgb >> 16) & 0xFF;
+                    int g = (rgb >> 8) & 0xFF;
+                    int b = rgb & 0xFF;
+                    return Color.fromRGB(r, g, b);
+                }
+            }
+            if (s.contains(",")) {
+                String[] parts = s.split(",");
+                if (parts.length == 3) {
+                    int r = clamp255(Integer.parseInt(parts[0].trim()));
+                    int g = clamp255(Integer.parseInt(parts[1].trim()));
+                    int b = clamp255(Integer.parseInt(parts[2].trim()));
+                    return Color.fromRGB(r, g, b);
+                }
+            }
+        } catch (Exception ignored) {
+        }
+        return null;
+    }
+
+    private int clamp255(int v) {
+        if (v < 0) return 0;
+        if (v > 255) return 255;
+        return v;
     }
 
     @Override
