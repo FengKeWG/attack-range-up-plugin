@@ -1,0 +1,23 @@
+name: AttackRangeUp
+version: '${project.version}'
+main: org.windguest.attackrangeup.AttackRangeUp
+api-version: '1.16'
+
+commands:
+  attrange:
+    description: 为武器添加范围攻击能力
+    usage: /<command> [范围] [威力] [冷却时间]
+    permission: attrange.add
+    permission-message: §c你没有使用这个命令的权限。
+  ptc:
+    description: 管理武器的横扫粒子效果
+    usage: /<command> add/remove [粒子代号]
+    permission: ptc.change
+    permission-message: §c你没有使用这个命令的权限。
+permissions:
+  attrange.add:
+    description: 允许添加范围攻击能力
+    default: op
+  ptc.change:
+    description: 允许管理横扫粒子效果
+    default: op
