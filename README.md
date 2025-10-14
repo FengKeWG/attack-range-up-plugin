@@ -22,10 +22,16 @@ MC Bukkit 1.16 插件，AttackRangeUp
 
 说明：若物品 `lore` 中存在形如 `§a红石粒子设置: Color=#RRGGBB Size=1.0` 的行，则以物品设置为准；否则回落到全局配置（见下）。
 
+### /ptc shape HALF|FULL
+- 设置该物品的粒子形状：
+  - `HALF`：前方半圆（默认）
+  - `FULL`：整圈圆形（前后皆有）
+
 ## 配置
 
 - `DefaultParticle`: 当物品未设置“横扫粒子”时的默认粒子；设为 `NULL` 表示无默认。
 - `Redstone.Color` 与 `Redstone.Size`: `REDSTONE` 粒子的全局默认颜色与大小，仅在物品未单独设置时生效。
+- `Shape`: 全局默认形状，`HALF` 或 `FULL`，若物品已在 `lore` 里设置则以物品为准。
 
 示例（节选）：
 
@@ -35,4 +41,6 @@ DefaultParticle: WITCH_MAGIC
 Redstone:
   Color: '#FF0000'   # 也可写成 255,0,0
   Size: 1.0          # 0.1 ~ 4.0
+
+Shape: HALF
 ```
