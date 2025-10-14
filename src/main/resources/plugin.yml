@@ -14,7 +14,7 @@ commands:
     usage: /<command> add/remove [粒子代号]
     permission: ptc.change
     permission-message: §c你没有使用这个命令的权限。
-permissions:
+permissions: 
   attrange.add:
     description: 允许添加范围攻击能力
     default: op

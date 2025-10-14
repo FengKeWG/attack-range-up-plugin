@@ -146,13 +146,17 @@ public class AttackRangeUp extends JavaPlugin implements Listener {
                             found = true;
                             String particleKey = getKeyByValue(particleName, s1.split("§a横扫粒子: ")[1]);
                             if (particleKey.equals("noFound")) continue;
-                            Particle particleType;
+							Particle particleType;
                             try {
                                 particleType = Particle.valueOf(particleKey);
                             } catch (IllegalArgumentException ex) {
                                 particleType = Particle.EXPLOSION_NORMAL; // 默认粒子效果
                             }
-                            particleCreate(e.getPlayer().getLocation(), range, particleType);
+							Particle.DustOptions options = null;
+							if (particleType == Particle.REDSTONE) {
+								options = getPerItemDustOptions(lore);
+							}
+							particleCreate(e.getPlayer().getLocation(), range, particleType, options);
                         }
                     }
                     if (!found && !this.getConfig().getString("DefaultParticle").equalsIgnoreCase("NULL")) {
@@ -164,7 +168,12 @@ public class AttackRangeUp extends JavaPlugin implements Listener {
                             } catch (IllegalArgumentException ex) {
                                 defaultParticleType = Particle.EXPLOSION_NORMAL; // 默认粒子效果
                             }
-                            particleCreate(e.getPlayer().getLocation(), range, defaultParticleType);
+							if (defaultParticleType == Particle.REDSTONE) {
+								Particle.DustOptions options = getPerItemDustOptions(lore);
+								particleCreate(e.getPlayer().getLocation(), range, defaultParticleType, options);
+							} else {
+								particleCreate(e.getPlayer().getLocation(), range, defaultParticleType);
+							}
                         }
                     }
                     SweepAttack(e.getPlayer(), range, damage);
@@ -260,7 +269,7 @@ public class AttackRangeUp extends JavaPlugin implements Listener {
         }
         if (label.equalsIgnoreCase("ptc")) {
             if (sender.hasPermission("ptc.change")) {
-                if (args.length == 2 && sender instanceof Player
+                if (args.length >= 2 && sender instanceof Player
                         && ((Player) sender).getInventory().getItemInMainHand().getType() != Material.AIR) {
                     Player player = (Player) sender;
                     ItemMeta im = player.getInventory().getItemInMainHand().getItemMeta();
@@ -293,14 +302,51 @@ public class AttackRangeUp extends JavaPlugin implements Listener {
                             } else {
                                 sender.sendMessage("§c没有找到您输入的粒子代号，请到config.yml查看粒子代号");
                             }
+                        } else if (args[0].equalsIgnoreCase("redstone")) {
+                            // /ptc redstone Color=<#RRGGBB|R,G,B> Size=<float>
+                            List<String> lore = im.hasLore() ? new ArrayList<>(im.getLore()) : new ArrayList<>();
+                            String colorToken = null;
+                            String sizeToken = null;
+                            for (int i = 1; i < args.length; i++) {
+                                String t = args[i];
+                                if (t.startsWith("Color=")) colorToken = t.substring(6);
+                                else if (t.startsWith("Size=")) sizeToken = t.substring(5);
+                            }
+                            if (colorToken == null && sizeToken == null) {
+                                sender.sendMessage("§c正确格式：/ptc redstone Color=#RRGGBB Size=1.0");
+                            } else {
+                                // 先移除旧设置行
+                                String prefix = "§a红石粒子设置: ";
+                                lore.removeIf(line -> line.startsWith(prefix));
+                                // 解析并存放
+                                Color color = colorToken != null ? parseColor(colorToken) : null;
+                                Float size = null;
+                                if (sizeToken != null) {
+                                    try { size = Float.parseFloat(sizeToken); } catch (Exception ignored) {}
+                                }
+                                StringBuilder sb = new StringBuilder(prefix);
+                                if (color != null) {
+                                    String hex = String.format("#%02X%02X%02X", color.getRed(), color.getGreen(), color.getBlue());
+                                    sb.append("Color=").append(hex).append(' ');
+                                }
+                                if (size != null) {
+                                    float clamped = Math.max(0.01F, Math.min(size, 4.0F));
+                                    sb.append("Size=").append(clamped);
+                                }
+                                String line = sb.toString().trim();
+                                lore.add(line);
+                                im.setLore(lore);
+                                player.getInventory().getItemInMainHand().setItemMeta(im);
+                                sender.sendMessage("§a已更新红石粒子颜色/大小设置");
+                            }
                         } else {
-                            sender.sendMessage("§c正确格式：/ptc add/remove [粒子代号]");
+                            sender.sendMessage("§c正确格式：/ptc add/remove [粒子代号] 或 /ptc redstone Color=#RRGGBB Size=1.0");
                         }
                     } else {
                         sender.sendMessage("§c手持物品无法添加粒子效果");
                     }
                 } else if (sender instanceof Player) {
-                    sender.sendMessage("§c正确格式：/ptc add/remove [粒子代号]");
+                    sender.sendMessage("§c正确格式：/ptc add/remove [粒子代号] 或 /ptc redstone Color=#RRGGBB Size=1.0");
                 } else {
                     sender.sendMessage("§c手持物品再使用该指令");
                 }
@@ -343,6 +389,64 @@ public class AttackRangeUp extends JavaPlugin implements Listener {
             }
             i += 2.0;
         }
+    }
+
+    public void particleCreate(Location loc, double radii, Particle type, Particle.DustOptions perItemOptions) {
+        double i = 1.5;
+        while (i <= radii) {
+            double o = 90.0;
+            while (o <= 270.0) {
+                double radians = Math.toRadians(o);
+                double pitchRadians = Math.toRadians(90.0 - loc.getPitch() + 90.0);
+                double yawRadians = Math.toRadians(loc.getYaw());
+
+                double x = i * (Math.cos(radians) * (-Math.cos(pitchRadians) * Math.sin(yawRadians)) +
+                        Math.sin(radians) * -Math.sin(Math.toRadians(loc.getYaw() - 90.0)));
+                double y = 0.8 + i * (Math.cos(radians) * Math.sin(pitchRadians));
+                double z = i * (Math.cos(radians) * (Math.cos(pitchRadians) * Math.cos(yawRadians)) +
+                        Math.sin(radians) * Math.cos(Math.toRadians(loc.getYaw() - 90.0)));
+
+                Location particleLoc = loc.clone().add(x, y, z);
+                if (type == Particle.REDSTONE) {
+                    Particle.DustOptions optionsToUse = perItemOptions != null ? perItemOptions : redstoneDustOptions;
+                    if (optionsToUse == null) {
+                        optionsToUse = new Particle.DustOptions(Color.fromRGB(255, 0, 0), 1.0F);
+                    }
+                    loc.getWorld().spawnParticle(type, particleLoc, 1, 0, 0, 0, 0, optionsToUse);
+                } else {
+                    loc.getWorld().spawnParticle(type, particleLoc, 0, 0, 0, 0, 1);
+                }
+                o += 1.0;
+            }
+            i += 2.0;
+        }
+    }
+
+    private Particle.DustOptions getPerItemDustOptions(List<String> lore) {
+        if (lore == null) return null;
+        // Lore 格式: "§a红石粒子设置: Color=#RRGGBB Size=1.0"
+        for (String line : lore) {
+            if (line.startsWith("§a红石粒子设置: ")) {
+                String conf = line.substring("§a红石粒子设置: ".length()).trim();
+                String colorStr = null;
+                Float size = null;
+                String[] tokens = conf.split(" ");
+                for (String token : tokens) {
+                    if (token.startsWith("Color=")) {
+                        colorStr = token.substring("Color=".length());
+                    } else if (token.startsWith("Size=")) {
+                        try {
+                            size = Float.parseFloat(token.substring("Size=".length()));
+                        } catch (Exception ignored) {}
+                    }
+                }
+                Color color = colorStr != null ? parseColor(colorStr) : null;
+                if (color == null) color = Color.fromRGB(255, 0, 0);
+                float finalSize = size != null ? Math.max(0.01F, Math.min(size, 4.0F)) : 1.0F;
+                return new Particle.DustOptions(color, finalSize);
+            }
+        }
+        return null;
     }
 
     private void loadRedstoneDustOptions() {
@@ -402,6 +506,9 @@ public class AttackRangeUp extends JavaPlugin implements Listener {
                 if ("remove".startsWith(args[0].toLowerCase())) {
                     completions.add("remove");
                 }
+                if ("redstone".startsWith(args[0].toLowerCase())) {
+                    completions.add("redstone");
+                }
             } else if (args.length == 2) {
                 if (args[0].equalsIgnoreCase("add") || args[0].equalsIgnoreCase("remove")) {
                     // 提示所有粒子代号
@@ -410,7 +517,18 @@ public class AttackRangeUp extends JavaPlugin implements Listener {
                             completions.add(key);
                         }
                     }
+                } else if (args[0].equalsIgnoreCase("redstone")) {
+                    if ("Color=#".toLowerCase().startsWith(args[1].toLowerCase())) completions.add("Color=#");
+                    if ("Size=".toLowerCase().startsWith(args[1].toLowerCase())) completions.add("Size=");
                 }
+            } else if (args.length >= 3 && args[0].equalsIgnoreCase("redstone")) {
+                boolean hasColor = false, hasSize = false;
+                for (int i = 1; i < args.length; i++) {
+                    if (args[i].startsWith("Color=")) hasColor = true;
+                    if (args[i].startsWith("Size=")) hasSize = true;
+                }
+                if (!hasColor && "Color=#".toLowerCase().startsWith(args[args.length-1].toLowerCase())) completions.add("Color=#");
+                if (!hasSize && "Size=".toLowerCase().startsWith(args[args.length-1].toLowerCase())) completions.add("Size=");
             }
         } else if (cmd.getName().equalsIgnoreCase("attrange")) {
             // 目前 /attrange 没有参数需要补全，或者可以补全数字
