@@ -19,6 +19,7 @@ import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.block.Action;
 import org.bukkit.event.player.PlayerInteractEvent;
+import org.bukkit.event.player.PlayerSwapHandItemsEvent;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.scheduler.BukkitRunnable;
@@ -124,71 +125,13 @@ public class AttackRangeUp extends JavaPlugin implements Listener {
 
     @EventHandler
     public void onInteract(final PlayerInteractEvent e) {
-        if ((e.getAction() == Action.RIGHT_CLICK_BLOCK || e.getAction() == Action.RIGHT_CLICK_AIR ||
-                e.getAction() == Action.LEFT_CLICK_AIR || e.getAction() == Action.LEFT_CLICK_BLOCK)
+        if ((e.getAction() == Action.RIGHT_CLICK_BLOCK || e.getAction() == Action.RIGHT_CLICK_AIR)
                 && !cdlist.contains(e.getPlayer()) && e.hasItem()) {
             ItemMeta itemMeta = e.getItem().getItemMeta();
             if (itemMeta != null && itemMeta.hasLore()) {
                 List<String> lore = itemMeta.getLore();
-                for (String s : lore) {
-                    if (!s.startsWith("§a范围: §6")) continue;
-                    String[] parts = s.split(" §c威力: §6");
-                    if (parts.length < 2) continue;
-                    Double range = Double.valueOf(parts[0].split("§a范围: §6")[1]);
-                    String[] powerParts = parts[1].split(" §b冷却: §6");
-                    if (powerParts.length < 2) continue;
-                    Double damage = Double.valueOf(powerParts[0]);
-                    Double cooldown = Double.valueOf(powerParts[1]);
-
-                    boolean found = false;
-                    boolean fullCircle = getPerItemFullCircle(lore);
-                    for (String s1 : lore) {
-                        if (s1.startsWith("§a横扫粒子: ")) {
-                            found = true;
-                            String particleKey = getKeyByValue(particleName, s1.split("§a横扫粒子: ")[1]);
-                            if (particleKey.equals("noFound")) continue;
-							Particle particleType;
-                            try {
-                                particleType = Particle.valueOf(particleKey);
-                            } catch (IllegalArgumentException ex) {
-                                particleType = Particle.EXPLOSION_NORMAL; // 默认粒子效果
-                            }
-                            Particle.DustOptions options = null;
-							if (particleType == Particle.REDSTONE) {
-								options = getPerItemDustOptions(lore);
-							}
-                            particleCreate(e.getPlayer().getLocation(), range, particleType, options, fullCircle);
-                        }
-                    }
-                    if (!found && !this.getConfig().getString("DefaultParticle").equalsIgnoreCase("NULL")) {
-                        String defaultParticleKey = getKeyByValue(particleName, this.getConfig().getString("DefaultParticle"));
-                        if (!defaultParticleKey.equals("noFound")) {
-                            Particle defaultParticleType;
-                            try {
-                                defaultParticleType = Particle.valueOf(defaultParticleKey);
-                            } catch (IllegalArgumentException ex) {
-                                defaultParticleType = Particle.EXPLOSION_NORMAL; // 默认粒子效果
-                            }
-                            if (defaultParticleType == Particle.REDSTONE) {
-								Particle.DustOptions options = getPerItemDustOptions(lore);
-                                particleCreate(e.getPlayer().getLocation(), range, defaultParticleType, options, fullCircle);
-							} else {
-                                particleCreate(e.getPlayer().getLocation(), range, defaultParticleType, null, fullCircle);
-							}
-                        }
-                    }
-                    SweepAttack(e.getPlayer(), range, damage);
-                    cdlist.add(e.getPlayer());
-                    BukkitRunnable task = new BukkitRunnable() {
-                        @Override
-                        public void run() {
-                            cdlist.remove(e.getPlayer());
-                        }
-                    };
-                    Long cdTicks = (long) (cooldown * 20.0);
-                    task.runTaskLater(this, cdTicks);
-                    break;
-                }
+                if (!shouldTriggerOnRightClick(lore)) return;
+                tryActivateFromLore(e.getPlayer(), lore);
             }
         }
     }
@@ -359,14 +302,37 @@ public class AttackRangeUp extends JavaPlugin implements Listener {
                             } else {
                                 sender.sendMessage("§c正确格式：/ptc shape HALF|FULL");
                             }
+                        } else if (args[0].equalsIgnoreCase("trigger")) {
+                            // /ptc trigger RIGHT|SWAP
+                            if (args.length >= 2) {
+                                String mode = args[1].toUpperCase();
+                                String normalized;
+                                if (mode.equals("RIGHT") || mode.equals("RIGHT_CLICK") || mode.equals("右键")) {
+                                    normalized = "RIGHT";
+                                } else if (mode.equals("SWAP") || mode.equals("SWAP_HAND") || mode.equals("OFFHAND") || mode.equals("切换副手")) {
+                                    normalized = "SWAP";
+                                } else {
+                                    sender.sendMessage("§c正确格式：/ptc trigger RIGHT|SWAP");
+                                    return true;
+                                }
+                                List<String> lore = im.hasLore() ? new ArrayList<>(im.getLore()) : new ArrayList<>();
+                                String prefix = "§a释放方式: ";
+                                lore.removeIf(line -> line.startsWith(prefix));
+                                lore.add(prefix + normalized);
+                                im.setLore(lore);
+                                player.getInventory().getItemInMainHand().setItemMeta(im);
+                                sender.sendMessage("§a已将释放方式设置为 " + normalized);
+                            } else {
+                                sender.sendMessage("§c正确格式：/ptc trigger RIGHT|SWAP");
+                            }
                         } else {
-                            sender.sendMessage("§c正确格式：/ptc add/remove [粒子代号] 或 /ptc redstone Color=#RRGGBB Size=1.0 或 /ptc shape HALF|FULL");
+                            sender.sendMessage("§c正确格式：/ptc add/remove [粒子代号] 或 /ptc redstone Color=#RRGGBB Size=1.0 或 /ptc shape HALF|FULL 或 /ptc trigger RIGHT|SWAP");
                         }
                     } else {
                         sender.sendMessage("§c手持物品无法添加粒子效果");
                     }
                 } else if (sender instanceof Player) {
-                    sender.sendMessage("§c正确格式：/ptc add/remove [粒子代号] 或 /ptc redstone Color=#RRGGBB Size=1.0 或 /ptc shape HALF|FULL");
+                    sender.sendMessage("§c正确格式：/ptc add/remove [粒子代号] 或 /ptc redstone Color=#RRGGBB Size=1.0 或 /ptc shape HALF|FULL 或 /ptc trigger RIGHT|SWAP");
                 } else {
                     sender.sendMessage("§c手持物品再使用该指令");
                 }
@@ -493,6 +459,113 @@ public class AttackRangeUp extends JavaPlugin implements Listener {
         return def.equals("FULL") || def.equals("CIRCLE") || def.equals("ROUND");
     }
 
+    private String getPerItemTriggerMode(List<String> lore) {
+        if (lore == null) return null;
+        String prefix = "§a释放方式: ";
+        for (String line : lore) {
+            if (line.startsWith(prefix)) {
+                String mode = line.substring(prefix.length()).trim().toUpperCase();
+                // 同义词归一化
+                if (mode.equals("RIGHT") || mode.equals("RIGHT_CLICK") || mode.equals("右键")) return "RIGHT";
+                if (mode.equals("SWAP") || mode.equals("SWAP_HAND") || mode.equals("OFFHAND") || mode.equals("切换副手")) return "SWAP";
+                return mode;
+            }
+        }
+        return null;
+    }
+
+    private boolean shouldTriggerOnRightClick(List<String> lore) {
+        String mode = getPerItemTriggerMode(lore);
+        if (mode == null) {
+            String def = this.getConfig().getString("Trigger", "RIGHT_CLICK").toUpperCase();
+            return def.equals("RIGHT") || def.equals("RIGHT_CLICK");
+        }
+        return mode.equals("RIGHT");
+    }
+
+    private boolean shouldTriggerOnSwap(List<String> lore) {
+        String mode = getPerItemTriggerMode(lore);
+        if (mode == null) {
+            String def = this.getConfig().getString("Trigger", "RIGHT_CLICK").toUpperCase();
+            return def.equals("SWAP") || def.equals("SWAP_HAND") || def.equals("OFFHAND");
+        }
+        return mode.equals("SWAP");
+    }
+
+    private void tryActivateFromLore(Player player, List<String> lore) {
+        for (String s : lore) {
+            if (!s.startsWith("§a范围: §6")) continue;
+            String[] parts = s.split(" §c威力: §6");
+            if (parts.length < 2) continue;
+            Double range = Double.valueOf(parts[0].split("§a范围: §6")[1]);
+            String[] powerParts = parts[1].split(" §b冷却: §6");
+            if (powerParts.length < 2) continue;
+            Double damage = Double.valueOf(powerParts[0]);
+            Double cooldown = Double.valueOf(powerParts[1]);
+
+            boolean found = false;
+            boolean fullCircle = getPerItemFullCircle(lore);
+            for (String s1 : lore) {
+                if (s1.startsWith("§a横扫粒子: ")) {
+                    found = true;
+                    String particleKey = getKeyByValue(particleName, s1.split("§a横扫粒子: ")[1]);
+                    if (particleKey.equals("noFound")) continue;
+                    Particle particleType;
+                    try {
+                        particleType = Particle.valueOf(particleKey);
+                    } catch (IllegalArgumentException ex) {
+                        particleType = Particle.EXPLOSION_NORMAL; // 默认粒子效果
+                    }
+                    Particle.DustOptions options = null;
+                    if (particleType == Particle.REDSTONE) {
+                        options = getPerItemDustOptions(lore);
+                    }
+                    particleCreate(player.getLocation(), range, particleType, options, fullCircle);
+                }
+            }
+            if (!found && !this.getConfig().getString("DefaultParticle").equalsIgnoreCase("NULL")) {
+                String defaultParticleKey = getKeyByValue(particleName, this.getConfig().getString("DefaultParticle"));
+                if (!defaultParticleKey.equals("noFound")) {
+                    Particle defaultParticleType;
+                    try {
+                        defaultParticleType = Particle.valueOf(defaultParticleKey);
+                    } catch (IllegalArgumentException ex) {
+                        defaultParticleType = Particle.EXPLOSION_NORMAL; // 默认粒子效果
+                    }
+                    if (defaultParticleType == Particle.REDSTONE) {
+                        Particle.DustOptions options = getPerItemDustOptions(lore);
+                        particleCreate(player.getLocation(), range, defaultParticleType, options, fullCircle);
+                    } else {
+                        particleCreate(player.getLocation(), range, defaultParticleType, null, fullCircle);
+                    }
+                }
+            }
+            SweepAttack(player, range, damage);
+            cdlist.add(player);
+            BukkitRunnable task = new BukkitRunnable() {
+                @Override
+                public void run() {
+                    cdlist.remove(player);
+                }
+            };
+            Long cdTicks = (long) (cooldown * 20.0);
+            task.runTaskLater(this, cdTicks);
+            break;
+        }
+    }
+
+    @EventHandler
+    public void onSwapHand(final PlayerSwapHandItemsEvent e) {
+        Player player = e.getPlayer();
+        if (cdlist.contains(player)) return;
+        ItemMeta itemMeta = player.getInventory().getItemInMainHand().getItemMeta();
+        if (itemMeta == null || !itemMeta.hasLore()) return;
+        List<String> lore = itemMeta.getLore();
+        if (!shouldTriggerOnSwap(lore)) return;
+        e.setCancelled(true);
+        tryActivateFromLore(player, lore);
+    }
+
     private Particle.DustOptions getPerItemDustOptions(List<String> lore) {
         if (lore == null) return null;
         // Lore 格式: "§a红石粒子设置: Color=#RRGGBB Size=1.0"
@@ -583,6 +656,9 @@ public class AttackRangeUp extends JavaPlugin implements Listener {
                 if ("shape".startsWith(args[0].toLowerCase())) {
                     completions.add("shape");
                 }
+                if ("trigger".startsWith(args[0].toLowerCase())) {
+                    completions.add("trigger");
+                }
             } else if (args.length == 2) {
                 if (args[0].equalsIgnoreCase("add") || args[0].equalsIgnoreCase("remove")) {
                     // 提示所有粒子代号
@@ -597,6 +673,9 @@ public class AttackRangeUp extends JavaPlugin implements Listener {
                 } else if (args[0].equalsIgnoreCase("shape")) {
                     if ("HALF".toLowerCase().startsWith(args[1].toLowerCase())) completions.add("HALF");
                     if ("FULL".toLowerCase().startsWith(args[1].toLowerCase())) completions.add("FULL");
+                } else if (args[0].equalsIgnoreCase("trigger")) {
+                    if ("RIGHT".toLowerCase().startsWith(args[1].toLowerCase())) completions.add("RIGHT");
+                    if ("SWAP".toLowerCase().startsWith(args[1].toLowerCase())) completions.add("SWAP");
                 }
             } else if (args.length >= 3 && args[0].equalsIgnoreCase("redstone")) {
                 boolean hasColor = false, hasSize = false;

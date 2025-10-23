@@ -13,6 +13,9 @@ Redstone:
 # 形状默认设置（HALF 半圆 / FULL 全圆）。若物品 lore 设置了“§a粒子形状”则以物品为准
 Shape: HALF
 
+# 释放方式默认设置（RIGHT_CLICK 右键 / SWAP_HAND 切换副手）。若物品 lore 设置了“§a释放方式”则以物品为准
+Trigger: RIGHT_CLICK
+
 # 以下注释为插件使用者提供指令参考
 # 粒子代号                  名字翻译
 #
