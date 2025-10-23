@@ -16,6 +16,15 @@ Shape: HALF
 # 释放方式默认设置（RIGHT_CLICK 右键 / SWAP_HAND 切换副手）。若物品 lore 设置了“§a释放方式”则以物品为准
 Trigger: RIGHT_CLICK
 
+# 潜行 + 右键：以 OP 身份执行以下命令（按顺序执行）
+# 可用占位符：{player} {world} {x} {y} {z}
+SneakRightClick:
+  Enabled: false
+  Commands:
+    - "say Hello {player}"
+    # - "spawn"
+    # - "give {player} diamond 1"
+
 # 以下注释为插件使用者提供指令参考
 # 粒子代号                  名字翻译
 #

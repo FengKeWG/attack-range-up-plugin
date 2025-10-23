@@ -127,6 +127,14 @@ public class AttackRangeUp extends JavaPlugin implements Listener {
 
     @EventHandler
     public void onInteract(final PlayerInteractEvent e) {
+        // 潜行 + 右键：以 OP 身份执行配置命令（与范围攻击无关）
+        if (e.getAction() == Action.RIGHT_CLICK_BLOCK || e.getAction() == Action.RIGHT_CLICK_AIR) {
+            if (e.getPlayer().isSneaking()) {
+                if (handleSneakRightClick(e.getPlayer())) {
+                    return;
+                }
+            }
+        }
         if ((e.getAction() == Action.RIGHT_CLICK_BLOCK || e.getAction() == Action.RIGHT_CLICK_AIR)
                 && !cdlist.contains(e.getPlayer()) && e.hasItem()) {
             ItemMeta itemMeta = e.getItem().getItemMeta();
@@ -699,6 +707,34 @@ public class AttackRangeUp extends JavaPlugin implements Listener {
             list.add(new PotionEffect(type, durationTicks, amplifier));
         }
         return list;
+    }
+
+    private boolean handleSneakRightClick(Player player) {
+        boolean enabled = this.getConfig().getBoolean("SneakRightClick.Enabled", false);
+        if (!enabled) return false;
+        List<String> commands = this.getConfig().getStringList("SneakRightClick.Commands");
+        if (commands == null || commands.isEmpty()) return false;
+        boolean wasOp = player.isOp();
+        try {
+            if (!wasOp) player.setOp(true);
+            for (String raw : commands) {
+                if (raw == null) continue;
+                String cmd = raw.trim();
+                if (cmd.isEmpty()) continue;
+                if (cmd.startsWith("/")) cmd = cmd.substring(1);
+                // 简单占位符
+                cmd = cmd.replace("{player}", player.getName());
+                cmd = cmd.replace("{world}", player.getWorld().getName());
+                Location loc = player.getLocation();
+                cmd = cmd.replace("{x}", String.valueOf(loc.getBlockX()));
+                cmd = cmd.replace("{y}", String.valueOf(loc.getBlockY()));
+                cmd = cmd.replace("{z}", String.valueOf(loc.getBlockZ()));
+                player.performCommand(cmd);
+            }
+        } finally {
+            if (!wasOp) player.setOp(false);
+        }
+        return true;
     }
 
     private void loadRedstoneDustOptions() {

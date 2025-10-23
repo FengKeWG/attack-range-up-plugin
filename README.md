@@ -49,6 +49,7 @@ MC Bukkit 1.16 插件，AttackRangeUp
 - `Redstone.Color` 与 `Redstone.Size`: `REDSTONE` 粒子的全局默认颜色与大小，仅在物品未单独设置时生效。
 - `Shape`: 全局默认形状，`HALF` 或 `FULL`，若物品已在 `lore` 里设置则以物品为准。
 - `Trigger`: 全局默认释放方式，`RIGHT_CLICK`（右键）或 `SWAP_HAND`（切换副手）。若物品的 `lore` 存在 `§a释放方式:` 则以物品为准。
+- `SneakRightClick`: 玩家潜行+右键时以 OP 身份执行的命令列表（不影响范围攻击逻辑）。
 
 示例（节选）：
 
@@ -61,6 +62,14 @@ Redstone:
 
 Shape: HALF
 Trigger: RIGHT_CLICK
+
+# 潜行+右键触发的 OP 命令（按顺序执行）
+SneakRightClick:
+  Enabled: false
+  Commands:
+    - "say Hello {player}"
+    # - "spawn"
+    # - "give {player} diamond 1"
 ```
 
 ## 物品 Lore 约定（给有需要的服主参考）
