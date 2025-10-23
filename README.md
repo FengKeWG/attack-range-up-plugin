@@ -33,6 +33,16 @@ MC Bukkit 1.16 插件，AttackRangeUp
   - `SWAP`：切换副手释放（按 F 触发，实际切换会被取消）
 - 若物品未设置释放方式，则使用全局默认 `Trigger` 配置。
 
+### /ptc effect add/remove/clear
+- 为手持武器配置“命中时施加的药水效果”（可添加多个）。
+- 用法：
+  - 添加：`/ptc effect add <类型> <秒数> <等级>`
+    - 例：`/ptc effect add SPEED 10 2`（10 秒 速度 II）
+  - 移除：`/ptc effect remove <类型>`
+  - 清空：`/ptc effect clear`
+- 类型需使用 Bukkit 的 `PotionEffectType` 名称（如 `SPEED`, `POISON`, `SLOW` 等）。
+- 提示：等级为自然读法（I=1, II=2 ...），内部会自动换算。
+
 ## 配置
 
 - `DefaultParticle`: 当物品未设置“横扫粒子”时的默认粒子；设为 `NULL` 表示无默认。
@@ -52,3 +62,11 @@ Redstone:
 Shape: HALF
 Trigger: RIGHT_CLICK
 ```
+
+## 物品 Lore 约定（给有需要的服主参考）
+
+- 粒子形状：`§a粒子形状: HALF|FULL`
+- 释放方式：`§a释放方式: RIGHT|SWAP`
+- 红石粒子设置：`§a红石粒子设置: Color=#RRGGBB Size=1.0`
+- 药水效果（可多行）：`§a药水效果: <类型> <秒数> <等级>`
+  - 例：`§a药水效果: SPEED 10 2`

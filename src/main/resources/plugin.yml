@@ -11,7 +11,7 @@ commands:
     permission-message: §c你没有使用这个命令的权限。
   ptc:
     description: 管理武器的横扫粒子效果
-    usage: /<command> add/remove [粒子代号] | redstone Color=#RRGGBB Size=1.0 | shape HALF|FULL | trigger RIGHT|SWAP
+    usage: /<command> add/remove [粒子代号] | redstone Color=#RRGGBB Size=1.0 | shape HALF|FULL | trigger RIGHT|SWAP | effect add/remove/clear
     permission: ptc.change
     permission-message: §c你没有使用这个命令的权限。
 permissions: 

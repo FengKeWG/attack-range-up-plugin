@@ -23,6 +23,8 @@ import org.bukkit.event.player.PlayerSwapHandItemsEvent;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.scheduler.BukkitRunnable;
+import org.bukkit.potion.PotionEffect;
+import org.bukkit.potion.PotionEffectType;
 
 public class AttackRangeUp extends JavaPlugin implements Listener {
     private HashMap<String, String> particleName = new HashMap<>();
@@ -150,6 +152,18 @@ public class AttackRangeUp extends JavaPlugin implements Listener {
             if (!(e instanceof LivingEntity) || !this.inSight(p, e)) continue;
             LivingEntity le = (LivingEntity) e;
             if (le.equals(p)) continue; // 避免攻击自己
+            le.damage(damage, p);
+        }
+    }
+
+    public void SweepAttack(Player p, Double range, Double damage, List<PotionEffect> effects) {
+        for (Entity e : p.getNearbyEntities(range, range, range)) {
+            if (!(e instanceof LivingEntity) || !this.inSight(p, e)) continue;
+            LivingEntity le = (LivingEntity) e;
+            if (le.equals(p)) continue;
+            if (effects != null && !effects.isEmpty()) {
+                le.addPotionEffects(effects);
+            }
             le.damage(damage, p);
         }
     }
@@ -325,14 +339,79 @@ public class AttackRangeUp extends JavaPlugin implements Listener {
                             } else {
                                 sender.sendMessage("§c正确格式：/ptc trigger RIGHT|SWAP");
                             }
+                        } else if (args[0].equalsIgnoreCase("effect")) {
+                            // /ptc effect add <TYPE> <SECONDS> <LEVEL>
+                            // /ptc effect remove <TYPE>
+                            // /ptc effect clear
+                            if (args.length >= 2) {
+                                String sub = args[1].toLowerCase();
+                                List<String> lore = im.hasLore() ? new ArrayList<>(im.getLore()) : new ArrayList<>();
+                                String prefix = "§a药水效果: ";
+                                if (sub.equals("add")) {
+                                    if (args.length >= 5) {
+                                        String typeName = args[2].toUpperCase();
+                                        PotionEffectType type = PotionEffectType.getByName(typeName);
+                                        if (type == null) {
+                                            sender.sendMessage("§c无效的药水类型：" + args[2]);
+                                            return true;
+                                        }
+                                        int seconds;
+                                        int level;
+                                        try {
+                                            seconds = Integer.parseInt(args[3]);
+                                            level = Integer.parseInt(args[4]);
+                                        } catch (Exception ex) {
+                                            sender.sendMessage("§c正确格式：/ptc effect add <类型> <秒数> <等级>");
+                                            return true;
+                                        }
+                                        seconds = Math.max(1, seconds);
+                                        level = Math.max(1, level);
+                                        // 去重该类型
+                                        String typeKey = type.getName();
+                                        lore.removeIf(line -> line.startsWith(prefix + typeKey + " "));
+                                        lore.add(prefix + typeKey + " " + seconds + " " + level);
+                                        im.setLore(lore);
+                                        player.getInventory().getItemInMainHand().setItemMeta(im);
+                                        sender.sendMessage("§a已添加药水效果：" + typeKey + " " + seconds + "s 等级" + level);
+                                    } else {
+                                        sender.sendMessage("§c正确格式：/ptc effect add <类型> <秒数> <等级>");
+                                    }
+                                } else if (sub.equals("remove")) {
+                                    if (args.length >= 3) {
+                                        String typeName = args[2].toUpperCase();
+                                        PotionEffectType type = PotionEffectType.getByName(typeName);
+                                        if (type == null) {
+                                            sender.sendMessage("§c无效的药水类型：" + args[2]);
+                                            return true;
+                                        }
+                                        String typeKey = type.getName();
+                                        boolean removed = lore.removeIf(line -> line.startsWith(prefix + typeKey + " "));
+                                        im.setLore(lore);
+                                        player.getInventory().getItemInMainHand().setItemMeta(im);
+                                        if (removed) sender.sendMessage("§a已移除药水效果：" + typeKey);
+                                        else sender.sendMessage("§c未找到药水效果：" + typeKey);
+                                    } else {
+                                        sender.sendMessage("§c正确格式：/ptc effect remove <类型>");
+                                    }
+                                } else if (sub.equals("clear")) {
+                                    boolean removedAny = lore.removeIf(line -> line.startsWith(prefix));
+                                    im.setLore(lore);
+                                    player.getInventory().getItemInMainHand().setItemMeta(im);
+                                    sender.sendMessage(removedAny ? "§a已清空所有药水效果" : "§e未找到任何药水效果");
+                                } else {
+                                    sender.sendMessage("§c正确格式：/ptc effect add/remove/clear ...");
+                                }
+                            } else {
+                                sender.sendMessage("§c正确格式：/ptc effect add/remove/clear ...");
+                            }
                         } else {
-                            sender.sendMessage("§c正确格式：/ptc add/remove [粒子代号] 或 /ptc redstone Color=#RRGGBB Size=1.0 或 /ptc shape HALF|FULL 或 /ptc trigger RIGHT|SWAP");
+                            sender.sendMessage("§c正确格式：/ptc add/remove [粒子代号] 或 /ptc redstone Color=#RRGGBB Size=1.0 或 /ptc shape HALF|FULL 或 /ptc trigger RIGHT|SWAP 或 /ptc effect add/remove/clear");
                         }
                     } else {
                         sender.sendMessage("§c手持物品无法添加粒子效果");
                     }
                 } else if (sender instanceof Player) {
-                    sender.sendMessage("§c正确格式：/ptc add/remove [粒子代号] 或 /ptc redstone Color=#RRGGBB Size=1.0 或 /ptc shape HALF|FULL 或 /ptc trigger RIGHT|SWAP");
+                    sender.sendMessage("§c正确格式：/ptc add/remove [粒子代号] 或 /ptc redstone Color=#RRGGBB Size=1.0 或 /ptc shape HALF|FULL 或 /ptc trigger RIGHT|SWAP 或 /ptc effect add/remove/clear");
                 } else {
                     sender.sendMessage("§c手持物品再使用该指令");
                 }
@@ -540,7 +619,8 @@ public class AttackRangeUp extends JavaPlugin implements Listener {
                     }
                 }
             }
-            SweepAttack(player, range, damage);
+            List<PotionEffect> effects = getPerItemPotionEffects(lore);
+            SweepAttack(player, range, damage, effects);
             cdlist.add(player);
             BukkitRunnable task = new BukkitRunnable() {
                 @Override
@@ -591,6 +671,34 @@ public class AttackRangeUp extends JavaPlugin implements Listener {
             }
         }
         return null;
+    }
+
+    private List<PotionEffect> getPerItemPotionEffects(List<String> lore) {
+        if (lore == null) return null;
+        List<PotionEffect> list = new ArrayList<>();
+        String prefix = "§a药水效果: ";
+        for (String line : lore) {
+            if (!line.startsWith(prefix)) continue;
+            String conf = line.substring(prefix.length()).trim();
+            String[] tokens = conf.split(" ");
+            if (tokens.length < 3) continue;
+            String typeName = tokens[0].toUpperCase();
+            PotionEffectType type = PotionEffectType.getByName(typeName);
+            if (type == null) continue;
+            int seconds;
+            int level;
+            try {
+                seconds = Integer.parseInt(tokens[1]);
+                level = Integer.parseInt(tokens[2]);
+            } catch (Exception ex) {
+                continue;
+            }
+            seconds = Math.max(1, seconds);
+            int amplifier = Math.max(0, level - 1);
+            int durationTicks = seconds * 20;
+            list.add(new PotionEffect(type, durationTicks, amplifier));
+        }
+        return list;
     }
 
     private void loadRedstoneDustOptions() {
@@ -659,6 +767,9 @@ public class AttackRangeUp extends JavaPlugin implements Listener {
                 if ("trigger".startsWith(args[0].toLowerCase())) {
                     completions.add("trigger");
                 }
+                if ("effect".startsWith(args[0].toLowerCase())) {
+                    completions.add("effect");
+                }
             } else if (args.length == 2) {
                 if (args[0].equalsIgnoreCase("add") || args[0].equalsIgnoreCase("remove")) {
                     // 提示所有粒子代号
@@ -676,6 +787,10 @@ public class AttackRangeUp extends JavaPlugin implements Listener {
                 } else if (args[0].equalsIgnoreCase("trigger")) {
                     if ("RIGHT".toLowerCase().startsWith(args[1].toLowerCase())) completions.add("RIGHT");
                     if ("SWAP".toLowerCase().startsWith(args[1].toLowerCase())) completions.add("SWAP");
+                } else if (args[0].equalsIgnoreCase("effect")) {
+                    if ("add".startsWith(args[1].toLowerCase())) completions.add("add");
+                    if ("remove".startsWith(args[1].toLowerCase())) completions.add("remove");
+                    if ("clear".startsWith(args[1].toLowerCase())) completions.add("clear");
                 }
             } else if (args.length >= 3 && args[0].equalsIgnoreCase("redstone")) {
                 boolean hasColor = false, hasSize = false;
@@ -685,6 +800,31 @@ public class AttackRangeUp extends JavaPlugin implements Listener {
                 }
                 if (!hasColor && "Color=#".toLowerCase().startsWith(args[args.length-1].toLowerCase())) completions.add("Color=#");
                 if (!hasSize && "Size=".toLowerCase().startsWith(args[args.length-1].toLowerCase())) completions.add("Size=");
+            } else if (cmd.getName().equalsIgnoreCase("ptc")) {
+                // 其它深度：/ptc effect add/remove 的补全
+                if (args.length == 3 && args[0].equalsIgnoreCase("effect") && (args[1].equalsIgnoreCase("add") || args[1].equalsIgnoreCase("remove"))) {
+                    // 提示药水类型
+                    PotionEffectType[] types = PotionEffectType.values();
+                    if (types != null) {
+                        for (PotionEffectType t : types) {
+                            if (t == null || t.getName() == null) continue;
+                            String name = t.getName();
+                            if (name.toLowerCase().startsWith(args[2].toLowerCase())) completions.add(name);
+                        }
+                    }
+                } else if (args.length == 4 && args[0].equalsIgnoreCase("effect") && args[1].equalsIgnoreCase("add")) {
+                    // 秒数建议
+                    if ("10".startsWith(args[3])) completions.add("10");
+                    if ("30".startsWith(args[3])) completions.add("30");
+                    if ("60".startsWith(args[3])) completions.add("60");
+                } else if (args.length == 5 && args[0].equalsIgnoreCase("effect") && args[1].equalsIgnoreCase("add")) {
+                    // 等级建议
+                    if ("1".startsWith(args[4])) completions.add("1");
+                    if ("2".startsWith(args[4])) completions.add("2");
+                    if ("3".startsWith(args[4])) completions.add("3");
+                    if ("4".startsWith(args[4])) completions.add("4");
+                    if ("5".startsWith(args[4])) completions.add("5");
+                }
             }
         } else if (cmd.getName().equalsIgnoreCase("attrange")) {
             // 目前 /attrange 没有参数需要补全，或者可以补全数字
