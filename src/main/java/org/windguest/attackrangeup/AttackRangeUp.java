@@ -836,31 +836,28 @@ public class AttackRangeUp extends JavaPlugin implements Listener {
                 }
                 if (!hasColor && "Color=#".toLowerCase().startsWith(args[args.length-1].toLowerCase())) completions.add("Color=#");
                 if (!hasSize && "Size=".toLowerCase().startsWith(args[args.length-1].toLowerCase())) completions.add("Size=");
-            } else if (cmd.getName().equalsIgnoreCase("ptc")) {
-                // 其它深度：/ptc effect add/remove 的补全
-                if (args.length == 3 && args[0].equalsIgnoreCase("effect") && (args[1].equalsIgnoreCase("add") || args[1].equalsIgnoreCase("remove"))) {
-                    // 提示药水类型
-                    PotionEffectType[] types = PotionEffectType.values();
-                    if (types != null) {
-                        for (PotionEffectType t : types) {
-                            if (t == null || t.getName() == null) continue;
-                            String name = t.getName();
-                            if (name.toLowerCase().startsWith(args[2].toLowerCase())) completions.add(name);
-                        }
+            } else if (args.length == 3 && args[0].equalsIgnoreCase("effect") && (args[1].equalsIgnoreCase("add") || args[1].equalsIgnoreCase("remove"))) {
+                // 提示药水类型
+                PotionEffectType[] types = PotionEffectType.values();
+                if (types != null) {
+                    for (PotionEffectType t : types) {
+                        if (t == null || t.getName() == null) continue;
+                        String name = t.getName();
+                        if (name.toLowerCase().startsWith(args[2].toLowerCase())) completions.add(name);
                     }
-                } else if (args.length == 4 && args[0].equalsIgnoreCase("effect") && args[1].equalsIgnoreCase("add")) {
-                    // 秒数建议
-                    if ("10".startsWith(args[3])) completions.add("10");
-                    if ("30".startsWith(args[3])) completions.add("30");
-                    if ("60".startsWith(args[3])) completions.add("60");
-                } else if (args.length == 5 && args[0].equalsIgnoreCase("effect") && args[1].equalsIgnoreCase("add")) {
-                    // 等级建议
-                    if ("1".startsWith(args[4])) completions.add("1");
-                    if ("2".startsWith(args[4])) completions.add("2");
-                    if ("3".startsWith(args[4])) completions.add("3");
-                    if ("4".startsWith(args[4])) completions.add("4");
-                    if ("5".startsWith(args[4])) completions.add("5");
                 }
+            } else if (args.length == 4 && args[0].equalsIgnoreCase("effect") && args[1].equalsIgnoreCase("add")) {
+                // 秒数建议
+                if ("10".startsWith(args[3])) completions.add("10");
+                if ("30".startsWith(args[3])) completions.add("30");
+                if ("60".startsWith(args[3])) completions.add("60");
+            } else if (args.length == 5 && args[0].equalsIgnoreCase("effect") && args[1].equalsIgnoreCase("add")) {
+                // 等级建议
+                if ("1".startsWith(args[4])) completions.add("1");
+                if ("2".startsWith(args[4])) completions.add("2");
+                if ("3".startsWith(args[4])) completions.add("3");
+                if ("4".startsWith(args[4])) completions.add("4");
+                if ("5".startsWith(args[4])) completions.add("5");
             }
         } else if (cmd.getName().equalsIgnoreCase("attrange")) {
             // 目前 /attrange 没有参数需要补全，或者可以补全数字
