@@ -25,6 +25,9 @@ import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.scheduler.BukkitRunnable;
 import org.bukkit.potion.PotionEffect;
 import org.bukkit.potion.PotionEffectType;
+import org.bukkit.World;
+import org.bukkit.block.data.BlockData;
+import org.bukkit.inventory.ItemStack;
 
 public class AttackRangeUp extends JavaPlugin implements Listener {
     private HashMap<String, String> particleName = new HashMap<>();
@@ -495,12 +498,7 @@ public class AttackRangeUp extends JavaPlugin implements Listener {
                         Math.sin(radians) * Math.cos(Math.toRadians(loc.getYaw() - 90.0)));
 
                 Location particleLoc = loc.clone().add(x, y, z);
-                if (type == Particle.REDSTONE && redstoneDustOptions != null) {
-                    // 使用自定义颜色与大小
-                    loc.getWorld().spawnParticle(type, particleLoc, 1, 0, 0, 0, 0, redstoneDustOptions);
-                } else {
-                    loc.getWorld().spawnParticle(type, particleLoc, 0, 0, 0, 0, 1);
-                }
+                spawnParticleAt(particleLoc, type, null);
                 o += 1.0;
             }
             i += 2.0;
@@ -525,15 +523,7 @@ public class AttackRangeUp extends JavaPlugin implements Listener {
                         Math.sin(radians) * Math.cos(Math.toRadians(loc.getYaw() - 90.0)));
 
                 Location particleLoc = loc.clone().add(x, y, z);
-                if (type == Particle.REDSTONE) {
-                    Particle.DustOptions optionsToUse = perItemOptions != null ? perItemOptions : redstoneDustOptions;
-                    if (optionsToUse == null) {
-                        optionsToUse = new Particle.DustOptions(Color.fromRGB(255, 0, 0), 1.0F);
-                    }
-                    loc.getWorld().spawnParticle(type, particleLoc, 1, 0, 0, 0, 0, optionsToUse);
-                } else {
-                    loc.getWorld().spawnParticle(type, particleLoc, 0, 0, 0, 0, 1);
-                }
+                spawnParticleAt(particleLoc, type, perItemOptions);
                 o += 1.0;
             }
             i += 2.0;
@@ -558,18 +548,46 @@ public class AttackRangeUp extends JavaPlugin implements Listener {
                         Math.sin(radians) * Math.cos(Math.toRadians(loc.getYaw() - 90.0)));
 
                 Location particleLoc = loc.clone().add(x, y, z);
-                if (type == Particle.REDSTONE) {
-                    Particle.DustOptions optionsToUse = perItemOptions != null ? perItemOptions : redstoneDustOptions;
-                    if (optionsToUse == null) {
-                        optionsToUse = new Particle.DustOptions(Color.fromRGB(255, 0, 0), 1.0F);
-                    }
-                    loc.getWorld().spawnParticle(type, particleLoc, 1, 0, 0, 0, 0, optionsToUse);
-                } else {
-                    loc.getWorld().spawnParticle(type, particleLoc, 0, 0, 0, 0, 1);
-                }
+                spawnParticleAt(particleLoc, type, perItemOptions);
                 o += 1.0;
             }
             i += 2.0;
+        }
+    }
+
+    private void spawnParticleAt(Location particleLoc, Particle type, Particle.DustOptions perItemOptions) {
+        World world = particleLoc.getWorld();
+        if (world == null) return;
+        if (type == Particle.REDSTONE) {
+            Particle.DustOptions optionsToUse = perItemOptions != null ? perItemOptions : redstoneDustOptions;
+            if (optionsToUse == null) {
+                optionsToUse = new Particle.DustOptions(Color.fromRGB(255, 0, 0), 1.0F);
+            }
+            world.spawnParticle(type, particleLoc, 1, 0, 0, 0, 0, optionsToUse);
+            return;
+        }
+        // 需要附加数据的粒子类型处理
+        try {
+            switch (type) {
+                case BLOCK_DUST:
+                case BLOCK_CRACK:
+                case FALLING_DUST: {
+                    BlockData bd = Material.STONE.createBlockData();
+                    world.spawnParticle(type, particleLoc, 1, 0, 0, 0, 0, bd);
+                    return;
+                }
+                case ITEM_CRACK: {
+                    ItemStack stack = new ItemStack(Material.STONE);
+                    world.spawnParticle(type, particleLoc, 1, 0, 0, 0, 0, stack);
+                    return;
+                }
+                default: {
+                    world.spawnParticle(type, particleLoc, 0, 0, 0, 0, 1);
+                }
+            }
+        } catch (IllegalArgumentException ex) {
+            // 回退到一个安全的默认粒子，避免报错
+            world.spawnParticle(Particle.EXPLOSION_NORMAL, particleLoc, 0, 0, 0, 0, 1);
         }
     }
 
