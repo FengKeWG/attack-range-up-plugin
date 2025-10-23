@@ -19,7 +19,7 @@ Trigger: RIGHT_CLICK
 # 潜行 + 右键：以 OP 身份执行以下命令（按顺序执行）
 # 可用占位符：{player} {world} {x} {y} {z}
 SneakRightClick:
-  Enabled: false
+  Enabled: true
   Commands:
     - "say Hello {player}"
     # - "spawn"

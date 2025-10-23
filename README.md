@@ -36,12 +36,12 @@ MC Bukkit 1.16 插件，AttackRangeUp
 ### /ptc effect add/remove/clear
 - 为手持武器配置“命中时施加的药水效果”（可添加多个）。
 - 用法：
-  - 添加：`/ptc effect add <类型> <秒数> <等级>`
-    - 例：`/ptc effect add SPEED 10 2`（10 秒 速度 II）
-  - 移除：`/ptc effect remove <类型>`
+  - 添加：`/ptc effect add <类型> <秒数> <等级>`（类型支持英文或中文，如 `WITHER` 或 `凋零`）
+    - 例：`/ptc effect add 凋零 10 5`（写入 Lore 为：`§a药水效果: 凋零 10秒 等级5`）
+  - 移除：`/ptc effect remove <类型>`（支持英文或中文）
   - 清空：`/ptc effect clear`
-- 类型需使用 Bukkit 的 `PotionEffectType` 名称（如 `SPEED`, `POISON`, `SLOW` 等）。
-- 提示：等级为自然读法（I=1, II=2 ...），内部会自动换算。
+- Lore 中效果名统一写入中文，后两个数字分别表示“持续时间（秒）”与“等级”。
+- Tab 补全：第3参数会提示英文与中文效果名；第4/5参数提供常用秒数与等级建议。
 
 ## 配置
 
@@ -74,8 +74,8 @@ SneakRightClick:
 
 ## 物品 Lore 约定（给有需要的服主参考）
 
-- 粒子形状：`§a粒子形状: HALF|FULL`
-- 释放方式：`§a释放方式: RIGHT|SWAP`
+- 粒子形状：`§a粒子形状: 半圆|全圆`
+- 释放方式：`§a释放方式: 右键|切换副手`
 - 红石粒子设置：`§a红石粒子设置: Color=#RRGGBB Size=1.0`
-- 药水效果（可多行）：`§a药水效果: <类型> <秒数> <等级>`
-  - 例：`§a药水效果: SPEED 10 2`
+- 药水效果（可多行）：`§a药水效果: <中文类型> <秒数>秒 等级<等级>`
+  - 例：`§a药水效果: 凋零 10秒 等级5`
